@@ -1,6 +1,4 @@
-Got it ✅ Here’s a clean **GitHub-ready README.md** you can copy–paste straight into your repo:
 
-````markdown
 # 📡 pcap-miner-system
 
 `pcap-miner-system` is a lightweight **PCAP analysis platform** with a **web-based dashboard**.  
