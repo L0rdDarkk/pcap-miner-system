@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Traffic capture service - captures packets from Docker networks
+  packet-capture:
+    image: nicolaka/netshoot
+    container_name: packet-capture
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./pcaps:/pcaps
+      - ./scripts:/scripts
+    command: /scripts/capture.sh
+    restart: unless-stopped
+
+  # PCAP Miner - THE CORE ANALYSIS ENGINE
+  pcap-miner:
+    image: demisto/pcap-miner:latest
+    container_name: pcap-miner
+    volumes:
+      - ./pcaps:/pcaps
+      - ./results:/results
+    restart: unless-stopped
+
+  # Processor - Watches for new PCAPs and runs pcap-miner on them
+  pcap-processor:
+    build: ./processor
+    container_name: pcap-processor
+    volumes:
+      - ./pcaps:/pcaps
+      - ./results:/results
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - PCAP_MINER_CONTAINER=pcap-miner
+      - WATCH_DIR=/pcaps
+      - OUTPUT_DIR=/results
+    depends_on:
+      - pcap-miner
+    restart: unless-stopped
+
+  # Web UI - Displays pcap-miner analysis results
+  web-ui:
+    build: ./web
+    container_name: pcap-web-ui
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./results:/data/results
+      - ./pcaps:/data/pcaps
+    environment:
+      - RESULTS_DIR=/data/results
+      - PCAP_DIR=/data/pcaps
+    restart: unless-stopped
+
+networks:
+  default:
+    name: pcap_network

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PCAP Miner Analysis Dashboard</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: #e2e8f0;
+        padding: 20px;
+        min-height: 100vh;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    header {
+        background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%);
+        padding: 30px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .subtitle {
+        opacity: 0.95;
+        font-size: 1.2em;
+    }
+
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        padding: 25px;
+        border-radius: 12px;
+        border-left: 5px solid #3b82f6;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .stat-label {
+        opacity: 0.8;
+        font-size: 0.95em;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .stat-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: #60a5fa;
+    }
+
+    .analyses-section {
+        background: #1e293b;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+    .section-header h2 {
+        font-size: 1.8em;
+    }
+
+    .refresh-btn {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: 600;
+        transition: all 0.3s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .refresh-btn:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .analyses-grid {
+        display: grid;
+        gap: 15px;
+    }
+
+    .analysis-card {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        padding: 20px;
+        border-radius: 12px;
+        border: 2px solid #334155;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .analysis-card:hover {
+        border-color: #3b82f6;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+    }
+
+    .analysis-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .filename {
+        font-size: 1.15em;
+        font-weight: bold;
+        color: #60a5fa;
+    }
+
+    .status {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85em;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .status.success {
+        background: #065f46;
+        color: #6ee7b7;
+    }
+
+    .status.error {
+        background: #7f1d1d;
+        color: #fca5a5;
+    }
+
+    .analysis-meta {
+        display: flex;
+        gap: 20px;
+        font-size: 0.9em;
+        opacity: 0.7;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+        background: #1e293b;
+        margin: 30px auto;
+        padding: 30px;
+        border-radius: 15px;
+        max-width: 1200px;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #334155;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: #e2e8f0;
+        font-size: 2.5em;
+        cursor: pointer;
+        padding: 0;
+        width: 50px;
+        height: 50px;
+        transition: color 0.2s;
+    }
+
+    .close-btn:hover {
+        color: #3b82f6;
+    }
+
+    .output-box {
+        background: #0f172a;
+        padding: 20px;
+        border-radius: 10px;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.9em;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-height: 500px;
+        overflow-y: auto;
+        border: 2px solid #334155;
+        line-height: 1.5;
+    }
+
+    .download-btn {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 15px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .download-btn:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-2px);
+    }
+
+    .loading {
+        text-align: center;
+        padding: 60px;
+        font-size: 1.3em;
+        opacity: 0.7;
+    }
+
+    .info-section {
+        background: #0f172a;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border: 2px solid #334155;
+    }
+
+    .info-section h3 {
+        color: #60a5fa;
+        margin-bottom: 10px;
+    }
+
+    .info-row {
+        display: flex;
+        padding: 8px 0;
+        border-bottom: 1px solid #334155;
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        font-weight: bold;
+        min-width: 150px;
+        color: #94a3b8;
+    }
+
+    .info-value {
+        color: #e2e8f0;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>PCAP Miner Analysis Dashboard</h1>
+        <p class="subtitle">Real-time network traffic analysis by l0rddarkk</p>
+    </header>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-label">Total Analyses</div>
+            <div class="stat-value" id="total-analyses">0</div>
+        </div>
+        <div class="stat-card" style="border-left-color: #10b981;">
+            <div class="stat-label">Successful</div>
+            <div class="stat-value" style="color: #6ee7b7;" id="successful-analyses">0</div>
+        </div>
+        <div class="stat-card" style="border-left-color: #ef4444;">
+            <div class="stat-label">Errors</div>
+            <div class="stat-value" style="color: #fca5a5;" id="error-analyses">0</div>
+        </div>
+    </div>
+
+    <div class="analyses-section">
+        <div class="section-header">
+            <h2>PCAP Analyses</h2>
+            <button class="refresh-btn" onclick="loadAnalyses()">Refresh</button>
+        </div>
+        <div id="analyses-list" class="analyses-grid">
+            <div class="loading">Loading analyses...</div>
+        </div>
+    </div>
+</div>
+
+<div id="detail-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">Analysis Details</h2>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+        <div id="modal-body"></div>
+    </div>
+</div>
+
+<script>
+    let analyses = [];
+
+    async function loadAnalyses() {
+        try {
+            const response = await fetch('/api/analyses');
+            analyses = await response.json();
+
+            updateStats();
+            displayAnalyses();
+        } catch (error) {
+            console.error('Error loading analyses:', error);
+            document.getElementById('analyses-list').innerHTML =
+                '<div class="loading">Error loading analyses. Please check if the service is running.</div>';
+        }
+    }
+
+    function updateStats() {
+        const total = analyses.length;
+        const successful = analyses.filter(a => a.status === 'success').length;
+        const errors = analyses.filter(a => a.status === 'error').length;
+
+        document.getElementById('total-analyses').textContent = total;
+        document.getElementById('successful-analyses').textContent = successful;
+        document.getElementById('error-analyses').textContent = errors;
+    }
+
+    function displayAnalyses() {
+        const container = document.getElementById('analyses-list');
+
+        if (analyses.length === 0) {
+            container.innerHTML = '<div class="loading">No analyses found yet. Upload a PCAP file to the /pcaps directory to get started!</div>';
+            return;
+        }
+
+        container.innerHTML = analyses.map(analysis => `
+            <div class="analysis-card" onclick="showDetail('${escapeHtml(analysis.id)}')">
+                <div class="analysis-header">
+                    <span class="filename">${escapeHtml(analysis.filename)}</span>
+                    <span class="status ${analysis.status}">${analysis.status.toUpperCase()}</span>
+                </div>
+                <div class="analysis-meta">
+                    <span>${escapeHtml(analysis.date)}</span>
+                    <span>ID: ${escapeHtml(analysis.id).substring(0, 30)}...</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function showDetail(analysisId) {
+        try {
+            const response = await fetch(`/api/analysis/${encodeURIComponent(analysisId)}`);
+            const data = await response.json();
+
+            if (data.error) {
+                alert('Error: ' + data.error);
+                return;
+            }
+
+            document.getElementById('modal-title').textContent = `Analysis: ${data.filename}`;
+
+            const modalBody = document.getElementById('modal-body');
+            modalBody.innerHTML = `
+                <div class="info-section">
+                    <h3>Analysis Information</h3>
+                    <div class="info-row">
+                        <span class="info-label">Filename:</span>
+                        <span class="info-value">${escapeHtml(data.filename)}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Timestamp:</span>
+                        <span class="info-value">${new Date(data.timestamp * 1000).toLocaleString()}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Status:</span>
+                        <span class="status ${data.status}">${data.status.toUpperCase()}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Exit Code:</span>
+                        <span class="info-value">${data.exit_code}</span>
+                    </div>
+                    ${data.error ? `
+                    <div class="info-row">
+                        <span class="info-label">Error:</span>
+                        <span class="info-value" style="color: #fca5a5;">${escapeHtml(data.error)}</span>
+                    </div>
+                    ` : ''}
+                    <button class="download-btn" onclick="downloadPcap('${escapeHtml(data.filename)}')">Download Original PCAP</button>
+                </div>
+                <div class="info-section">
+                    <h3>PCAP-Miner Output</h3>
+                    <div class="output-box">${escapeHtml(data.raw_output) || 'No output available'}</div>
+                </div>
+                ${data.stderr ? `
+                <div class="info-section">
+                    <h3>PCAP-Miner STDERR Output</h3>
+                    <div class="output-box">${escapeHtml(data.stderr)}</div>
+                    <button class="download-btn" onclick="downloadStderr('${escapeHtml(data.filename)}')">Download STDERR Log</button>
+                </div>
+                ` : ''}
+            `;
+            document.getElementById('detail-modal').style.display = 'block';
+        } catch (error) {
+            console.error('Error fetching analysis detail:', error);
+            alert('Failed to load analysis details.');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('detail-modal').style.display = 'none';
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    async function downloadPcap(filename) {
+        window.location.href = `/api/download/${encodeURIComponent(filename)}`;
+    }
+
+    async function downloadStderr(filename) {
+        window.location.href = `/api/download-stderr/${encodeURIComponent(filename)}`;
+    }
+
+    // Close modal when clicking outside content
+    window.onclick = function(event) {
+        const modal = document.getElementById('detail-modal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    };
+
+    // Load analyses on page load
+    window.onload = loadAnalyses;
+</script>
+</body>
+</html>
